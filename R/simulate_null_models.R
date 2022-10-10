@@ -50,6 +50,7 @@ simulate_null_models <- function(model, data, preds=NULL, pred_ras=NULL, variog=
                                  radius=NULL,
                                  nsim=1000)
 {
+  method=method[1]
   if (method %in% c('shift','kriging','shift_only','rotate_only') & class(radius)!="numeric")
     stop("Error: radius must be specified for the selected method!")
   if (method %in% c('shift','shift_only','rotate_only')) {
