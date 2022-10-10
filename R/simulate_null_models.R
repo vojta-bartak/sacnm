@@ -89,17 +89,17 @@ simulate_data <- function(data, preds, coords=c('x','y'), pred_ras=NULL, variog=
   if (method=='shift') {
     newdata <- shift_rotate(data, coords, radius)
     for (pred in preds){
-      newdata[,pred] <- st_extract(pred_rasters[[pred]], cbind(newdata[,coords[1]],newdata[,coords[2]]))[[1]]
+      newdata[,pred] <- st_extract(pred_ras[[pred]], cbind(newdata[,coords[1]],newdata[,coords[2]]))[[1]]
     }
   } else if (method=='shift_only') {
     newdata <- shift(data, coords, radius)
     for (pred in preds){
-      newdata[,pred] <- st_extract(pred_rasters[[pred]], cbind(newdata[,coords[1]],newdata[,coords[2]]))[[1]]
+      newdata[,pred] <- st_extract(pred_ras[[pred]], cbind(newdata[,coords[1]],newdata[,coords[2]]))[[1]]
     }
   } else if (method=='rotate_only') {
     newdata <- rotate(data, coords)
     for (pred in preds){
-      newdata[,pred] <- st_extract(pred_rasters[[pred]], cbind(newdata[,coords[1]],newdata[,coords[2]]))[[1]]
+      newdata[,pred] <- st_extract(pred_ras[[pred]], cbind(newdata[,coords[1]],newdata[,coords[2]]))[[1]]
     }
   } else if (method=='RFsim') {
 
