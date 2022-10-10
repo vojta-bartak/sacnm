@@ -76,7 +76,7 @@ simulate_null_models <- function(model, data, preds=NULL, pred_ras=NULL, variog=
   if (method %in% c('shift','shift_only','rotate_only')) preds <- preds[preds %in% names(pred_ras)]
 
   lapply(1:nsim, function(i){
-    newdata <- simulate_data(data=data, preds=preds, coords=coords, pred_ras=pred_ras, variog=variog, method=method)
+    newdata <- simulate_data(data=data, preds=preds, coords=coords, pred_ras=pred_ras, variog=variog, method=method, radius=radius)
     update(model, data=newdata)
   })
 }
