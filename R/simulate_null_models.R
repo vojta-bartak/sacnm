@@ -52,9 +52,14 @@ simulate_null_models <- function(model, data, preds=NULL, pred_ras=NULL, variog=
 {
   if (method %in% c('shift','kriging','shift_only','rotate_only') & class(radius)!="numeric")
     stop("Error: radius must be specified for the selected method!")
-  if (method %in% c('shift','shift_only','rotate_only') & !inherits(pred_ras, "stars"))
-    stop("Error: pred_ras is missing or wrong but needed for the selected method!")
-
+  if (method %in% c('shift','shift_only','rotate_only')) {
+    if (inherits(pred_ras, "list")) {
+      if (!min(sapply(pred_ras, function(ras) inherits(ras, "stars"))))
+        stop("Error: pred_ras is missing or wrong but needed for the selected method!")
+    }
+    else if (!inherits(pred_ras, "stars"))
+      stop("Error: pred_ras is missing or wrong but needed for the selected method!")
+  }
   if (class(coords)!="character") {stop("Error: coords must be a character vector!")}
   else if (min(coords %in% colnames(data))==0) {stop("Error: specified coordinate columns cannot be found in data!")}
 
