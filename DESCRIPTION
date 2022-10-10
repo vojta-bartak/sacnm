@@ -1,0 +1,13 @@
+Package: sacnm
+Title: What the Package Does (One Line, Title Case)
+Version: 0.0.0.9000
+Authors@R: 
+    person("Vojtěch", "Barták", , "vojta.bartak@gmail.com", role = c("aut", "cre"),
+           comment = c(ORCID = "0000-0001-9887-1290"))
+Description: Simulation of null models with the spatial autocorellation structure kept fixed (i.e., same as in the original dataset). Enables an evaluation of whether an observed statistical relationships between a response variable and predictor variable(s) could be due to their spatial autocorrelation or not. If not, it's probably a real, structral relationship. If so, a possible structural relationship is "masked" by the spatial relationship induced by the spatial autocorrelation. Diagnostics can be performed to evaluate the observed relationship(s) in context of null models, where the response-predictor relationship is removed, but the spatial autocorrelation of all variables is unchanged.
+Imports: geoR, RandomFields, stars
+Suggests: sf, tmap, tidyverse
+License: `use_mit_license()`
+Encoding: UTF-8
+Roxygen: list(markdown = TRUE)
+RoxygenNote: 7.1.2
