@@ -1,0 +1,52 @@
+library(RandomFields)
+library(spatstat)
+library(sf)
+library(stars)
+library(tidyverse)
+library(tmap)
+library(gstat)
+library(car)
+library(sacnm)
+library(ranger)
+
+# predictor parameters
+scale.pred <- 50
+var.pred <- 1
+kappa.pred <- 1.5
+mod.pred <- RMwhittle(nu=kappa.pred, var=var.pred, scale=scale.pred)
+
+# response parameters
+scale.resp <- 50
+var.resp <- 1
+kappa.resp <- 1.5
+alpha <- 1
+mod.resp <- RMwhittle(nu=kappa.resp, var=var.resp, scale=scale.resp)
+
+# plot rasters
+r.pred <- RFsimulate(mod.pred, x=0:100, y=0:100, grid=T) %>% st_as_stars
+r.resp <- r.pred + alpha*(RFsimulate(mod.resp, x=0:100, y=0:100, grid=T) %>% st_as_stars)
+tmap_arrange(
+  tm_shape(r.pred) + tm_raster(style="cont"),
+  tm_shape(r.resp) + tm_raster(style="cont")  
+)
+
+# data
+x <- runif(100, 0, 100)
+y <- runif(100, 0, 100)
+predictor <- st_extract(r.pred, cbind(x,y))$variable1
+response <- predictor + alpha*st_extract(r.resp, cbind(x,y))$variable1
+df <- data.frame(x=x, y=y, predictor=scale(predictor), response=scale(response))
+plot(predictor,response)
+cor.test(predictor, response)
+
+# linear model
+m <- lm(response~predictor, data=df)
+m.rf <- ranger(response~predictor, data=df)
+
+ms <- simulate_null_models(m, df, radius = 50, pred_ras=list(predictor=r.pred))
+ms.rf <- simulate_null_models(m.rf, df, radius = 50, pred_ras=list(predictor=r.pred), nsim=100)
+
+coef_tab(m, ms)
+coef_plot(m, ms)
+effect_plot(m, ms, df)
+effect_plot(m.rf, ms.rf, df)
