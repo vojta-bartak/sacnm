@@ -88,6 +88,7 @@ simulate_data <- function(data, preds, coords=c('x','y'), pred_ras=NULL, variog=
                           method=c('shift','RFsim','Viladomat','kriging','shift_only','rotate_only'),
                           radius=NULL)
 {
+  preds <- preds[preds %in% colnames(data)]
   if (method %in% c("shift", "shift_only", "rotate_only")) require(stars)
   if (method=='shift') {
     newdata <- shift_rotate(data, coords, radius)
