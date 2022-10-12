@@ -84,6 +84,7 @@ simulate_null_models <- function(model, data, preds=NULL, pred_ras=NULL, variog=
 }
 
 # Simulate new data
+#' @export
 simulate_data <- function(data, preds, coords=c('x','y'), pred_ras=NULL, variog=NULL,
                           method=c('shift','RFsim','Viladomat','kriging','shift_only','rotate_only'),
                           radius=NULL)

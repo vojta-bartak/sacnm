@@ -3,4 +3,5 @@
 export(coef_plot)
 export(coef_tab)
 export(effect_plot)
+export(simulate_data)
 export(simulate_null_models)
