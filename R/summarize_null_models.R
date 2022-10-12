@@ -85,8 +85,8 @@ coef_plot <- function(model, null_models, coefs=NULL)
 #' @param nval The number of values (between minimum and maximum from its observed values) of each predictor to be used
 #' for plotting the effect. Default is 100.
 #' @param plotdata A logical indicating whether the data points should be plotted together with the effect. Default is TRUE.
-#' @return A ggplot with a facet for each model coefficient, plotting its observed value (red line) on a density of
-#' its null distribution as well as 0.025, 0.5, and 0.975 quantiles.
+#' @return A ggplot object with a facet for each model predictor, plotting the predicted values (red line) together with
+#' simulation envelopes (grey shaded area) and median (black line).
 #' @export
 effect_plot <- function(model, null_models, data, preds=NULL, lower=c(0.025), upper=c(0.975), nval=100, plotdata=TRUE){
   require(ggplot2)
