@@ -78,6 +78,7 @@ simulate_null_models <- function(model, data, preds=NULL, pred_ras=NULL, variog=
 
   lapply(1:nsim, function(i){
     newdata <- simulate_data(data=data, preds=preds, coords=coords, pred_ras=pred_ras, variog=variog, method=method, radius=radius)
+    if (inherits(model, "ranger")) newdata <- na.omit(newdata)
     newmodel <- try(update(model, data=newdata), silent = T)
     if (inherits(newmodel, "try-error")) {NULL} else {newmodel}
   })
