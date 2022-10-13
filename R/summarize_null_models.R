@@ -53,7 +53,7 @@ coef_plot <- function(model, null_models, coefs=NULL)
   obs.coef$name <- rownames(obs.coef)
   obs.coef$quant <- "Observed"
   null.coef <- as.data.frame(do.call(rbind, lapply(null_models, function(m) coef(m)[coefs])))
-  ylims <- apply(null.coef, 2, function(col) max(stats::density(col)$y))
+  ylims <- apply(null.coef, 2, function(col) max(stats::density(na.omit(col))$y))
   obs.coef$ylim <- ylims
   ci <- t(apply(null.coef, 2, function(col) quantile(col, c(0.025,0.5,0.975))))
   ci <- rbind(data.frame(value=ci[,1],name=rownames(ci),quant=colnames(ci)[1],ylim=ylims),
