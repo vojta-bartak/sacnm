@@ -149,7 +149,8 @@ effect_plot <- function(model, null_models, data, preds=NULL, lower=c(0.025), up
     datadf <- do.call(rbind, lapply(preds, function(pred){
       data.frame(
         x=data[,pred],
-        mean=data[,resp]
+        mean=data[,resp],
+        predictor=pred
       )
     }))
     p <- p + geom_point(data=datadf, alpha=.1)
