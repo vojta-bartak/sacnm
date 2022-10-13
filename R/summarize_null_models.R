@@ -15,7 +15,9 @@ coef_tab <- function(model, null_models, coefs=NULL)
   if (is.null(coefs)) coefs <- names(coef(model))
   obs.coef <- coef(model)[coefs]
   null.coef <- do.call(rbind, lapply(null_models, function(m) coef(m)[coefs]))
-  sums <- as.data.frame(t(apply(null.coef, 2, summary)))
+  sums <- as.data.frame(t(apply(null.coef, 2, quantile, probs=c(0,0.25,0.5,0.75,1), na.rm=T)))
+  colnames(sums) <- c("Min.","1st Qu.", "Median", "3rd Qu.", "Max.")
+  sums$Mean <- apply(null.coef, 2, mean, na.rm=T)
   sums$Observed <- obs.coef
   sums$P.value <- sapply(names(obs.coef), function(prm){
     p <- rank(c(obs.coef[prm],null.coef[,prm]))[1]/(nrow(null.coef)+1)
