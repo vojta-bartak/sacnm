@@ -98,8 +98,8 @@ effect_plot <- function(model, null_models, data, preds=NULL, lower=c(0.025), up
   null_models <- Filter(function(x) !is.null(x), null_models)
   if (inherits(model, "ranger")){
     if (is.null(preds))  {
-      preds <- strsplit(as.character(model$call)[2], split=" ~ ", fixed=T)[[1]]
-      preds <- preds[2:length(preds)]
+      preds <- strsplit(as.character(model$call)[2], split=" ~ ", fixed=T)[[1]][2]
+      preds <- strsplit(preds, split=" + ", fixed=T)[[1]]
     }
     preds <- preds[preds %in% colnames(data)]
     preds <- preds[sapply(preds, function(pred) class(data[,pred])=="numeric")]
