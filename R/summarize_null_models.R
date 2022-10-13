@@ -26,7 +26,7 @@ coef_tab <- function(model, null_models, coefs=NULL)
     }
   })
   sums$Significance <- sapply(sums$P.value, function(p){
-    if(p<0.001){"***"}else if (p<0.01){"**"}else if (p<0.05){"*"}else if(p<0.1){"."}else{""}
+    if(is.na(p)){NA}else if(p<0.001){"***"}else if (p<0.01){"**"}else if (p<0.05){"*"}else if(p<0.1){"."}else{""}
   })
   sums
 }
