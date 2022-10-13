@@ -102,7 +102,7 @@ effect_plot <- function(model, null_models, data, preds=NULL, lower=c(0.025), up
       preds <- preds[2:length(preds)]
     }
     preds <- preds[preds %in% colnames(data)]
-    preds <- preds[class(data[,preds])=="numeric"]
+    preds <- preds[sapply(preds, function(pred) class(data[,pred])=="numeric")]
     df <- do.call(rbind, lapply(preds, function(pred){
       newdata <- prepare_data(data, pred, nval=nval)
       predictions <- do.call(cbind,lapply(null_models, function(m){
@@ -122,7 +122,7 @@ effect_plot <- function(model, null_models, data, preds=NULL, lower=c(0.025), up
       preds <- attr(terms(model), "term.labels")
     }
     preds <- preds[preds %in% colnames(data)]
-    preds <- preds[class(data[,preds])=="numeric"]
+    preds <- preds[sapply(preds, function(pred) class(data[,pred])=="numeric")]
     df <- do.call(rbind, lapply(preds, function(pred){
       newdata <- prepare_data(data, pred, nval=nval)
       predictions <- do.call(cbind,lapply(null_models, function(m){
