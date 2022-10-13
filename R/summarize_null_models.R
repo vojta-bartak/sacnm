@@ -20,8 +20,10 @@ coef_tab <- function(model, null_models, coefs=NULL)
   sums$Mean <- apply(null.coef, 2, mean, na.rm=T)
   sums$Observed <- obs.coef
   sums$P.value <- sapply(names(obs.coef), function(prm){
-    p <- rank(c(obs.coef[prm],null.coef[,prm]))[1]/(nrow(null.coef)+1)
-    2*min(p, 1-p)
+    if (is.na(obs.coef[prm])) {NA} else {
+      p <- rank(c(obs.coef[prm],null.coef[,prm]))[1]/(nrow(null.coef)+1)
+      2*min(p, 1-p)
+    }
   })
   sums$Significance <- sapply(sums$P.value, function(p){
     if(p<0.001){"***"}else if (p<0.01){"**"}else if (p<0.05){"*"}else if(p<0.1){"."}else{""}
