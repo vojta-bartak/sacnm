@@ -130,7 +130,7 @@ effect_plot <- function(model, null_models, data, preds=NULL, lower=c(0.025), up
       }))
       data.frame(
         x = newdata[,pred],
-        y = predict(model, newdata=newdata, type="response"),
+        y = as.numeric(predict(model, newdata=newdata, type="response")),
         mean = apply(predictions, 1, mean),
         lwr = apply(predictions, 1, quantile, probs=lower),
         upr = apply(predictions, 1, quantile, probs=upper),
@@ -149,7 +149,7 @@ effect_plot <- function(model, null_models, data, preds=NULL, lower=c(0.025), up
     datadf <- do.call(rbind, lapply(preds, function(pred){
       data.frame(
         x=data[,pred],
-        mean=data[,resp],
+        mean=as.numeric(data[,resp]),
         predictor=pred
       )
     }))
