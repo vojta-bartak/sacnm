@@ -59,6 +59,10 @@ simulate_null_models <- function(model, data, preds=NULL, pred_ras=NULL, variog=
     }
     else if (!inherits(pred_ras, "stars"))
       stop("Error: pred_ras is missing or wrong but needed for the selected method!")
+  } else if (method == "kriging"){
+    require(spaMM)
+    variog <- lapply(preds, function(pred) fitme(as.formula(paste(pred,"~1+Matern(1|x+y)", sep="")), data=data))
+    names(variog) <- preds
   }
   if (class(coords)!="character") {stop("Error: coords must be a character vector!")}
   else if (min(coords %in% colnames(data))==0) {stop("Error: specified coordinate columns cannot be found in data!")}
@@ -103,10 +107,6 @@ simulate_data <- function(data, preds, coords=c('x','y'), pred_ras=NULL, variog=
     for (i in 1:length(variog)) {
       if (is.null(variog[[i]])) variog[[i]] <- get_variogram(data[names(variog)[i]])
     }
-  } else if (method == "kriging"){
-    require(spaMM)
-    m.krig <- lapply(preds, function(pred) fitme(as.formula(paste(pred,"~1+Matern(1|x+y)", sep="")), data=data))
-    names(m.krig) <- preds
   }
   if (method=='shift') {
     newdata <- shift_rotate(data, coords, radius)
