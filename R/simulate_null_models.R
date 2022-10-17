@@ -104,7 +104,8 @@ simulate_data <- function(data, preds, coords=c('x','y'), pred_ras=NULL, variog=
       if (is.null(variog[[i]])) variog[[i]] <- get_variogram(data[names(variog)[i]])
     }
   } else if (method == "kriging"){
-    m.krig <- lapply(preds, function(pred) fitme(paste(pred,"~1+Matern(1|x+y)", sep=""), data=data))
+    require(spaMM)
+    m.krig <- lapply(preds, function(pred) fitme(as.formula(paste(pred,"~1+Matern(1|x+y)"), sep=""), data=data))
     names(m.krig) <- preds
   }
   if (method=='shift') {
