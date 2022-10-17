@@ -59,10 +59,6 @@ simulate_null_models <- function(model, data, preds=NULL, pred_ras=NULL, variog=
     }
     else if (!inherits(pred_ras, "stars"))
       stop("Error: pred_ras is missing or wrong but needed for the selected method!")
-  } else if (method == "kriging"){
-    require(spaMM)
-    variog <- lapply(preds, function(pred) fitme(as.formula(paste(pred,"~1+Matern(1|x+y)", sep="")), data=data))
-    names(variog) <- preds
   }
   if (class(coords)!="character") {stop("Error: coords must be a character vector!")}
   else if (min(coords %in% colnames(data))==0) {stop("Error: specified coordinate columns cannot be found in data!")}
@@ -78,6 +74,11 @@ simulate_null_models <- function(model, data, preds=NULL, pred_ras=NULL, variog=
     }
   }
   if (method %in% c('shift','shift_only','rotate_only')) preds <- preds[preds %in% names(pred_ras)]
+  else if (method == "kriging"){
+    require(spaMM)
+    variog <- lapply(preds, function(pred) fitme(as.formula(paste(pred,"~1+Matern(1|x+y)", sep="")), data=data))
+    names(variog) <- preds
+  }
 
   lapply(1:nsim, function(i){
     newdata <- simulate_data(data=data, preds=preds, coords=coords, pred_ras=pred_ras, variog=variog, method=method, radius=radius)
