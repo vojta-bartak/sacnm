@@ -130,7 +130,7 @@ simulate_data <- function(data, preds, coords=c('x','y'), pred_ras=NULL, variog=
 
   } else if (method=='kriging') {
     newdata <- shift_rotate(data, coords, radius)
-    for (pred in preds) newdata[,pred] <- predict(m.krig[[pred]], data=newdata)
+    for (pred in preds) newdata[,pred] <- predict(variog[[pred]], data=newdata)
   }
   for (pred in preds) newdata <- newdata[!is.na(newdata[,pred]),]
   newdata
