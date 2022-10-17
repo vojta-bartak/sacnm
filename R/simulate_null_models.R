@@ -91,6 +91,22 @@ simulate_data <- function(data, preds, coords=c('x','y'), pred_ras=NULL, variog=
 {
   preds <- preds[preds %in% colnames(data)]
   if (method %in% c("shift", "shift_only", "rotate_only")) require(stars)
+  else if (method == "RFsim"){
+    require(RandomFields)
+    require(geoR)
+
+    # getting variograms
+    if (is.null(variog)){
+      variog <- lapply(preds, function(pred) NULL)
+      names(variog) <- preds
+    }
+    for (i in 1:length(variog)) {
+      if (is.null(variog[[i]])) variog[[i]] <- get_variogram(data[names(variog)[i]])
+    }
+  } else if (method == "kriging"){
+    m.krig <- lapply(preds, function(pred) fitme(paste(pred,"~1+Matern(1|x+y)", sep=""), data=data))
+    names(m.krig) <- preds
+  }
   if (method=='shift') {
     newdata <- shift_rotate(data, coords, radius)
     for (pred in preds){
@@ -108,10 +124,12 @@ simulate_data <- function(data, preds, coords=c('x','y'), pred_ras=NULL, variog=
     }
   } else if (method=='RFsim') {
 
+
   } else if (method=='Viladomat') {
 
   } else if (method=='kriging') {
     newdata <- shift_rotate(data, coords, radius)
+    for (pred in preds) newdata[,pred] <- predict(m.krig[[pred]], data=newdata)
   }
   for (pred in preds) newdata <- newdata[!is.na(newdata[,pred]),]
   newdata
@@ -164,3 +182,8 @@ shift_rotate <- function(data, coords=c("x","y"), radius=50, angle1=NULL, angle2
 #   }
 #   else if (inherits(model, "gam"))
 # }
+
+get_variogram <- function(x){
+  require(geoR)
+
+}
