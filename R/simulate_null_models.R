@@ -105,7 +105,7 @@ simulate_data <- function(data, preds, coords=c('x','y'), pred_ras=NULL, variog=
     }
   } else if (method == "kriging"){
     require(spaMM)
-    m.krig <- lapply(preds, function(pred) fitme(as.formula(paste(pred,"~1+Matern(1|x+y)"), sep=""), data=data))
+    m.krig <- lapply(preds, function(pred) fitme(as.formula(paste(pred,"~1+Matern(1|x+y)", sep="")), data=data))
     names(m.krig) <- preds
   }
   if (method=='shift') {
