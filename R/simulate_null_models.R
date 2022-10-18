@@ -76,7 +76,7 @@ simulate_null_models <- function(model, data, preds=NULL, pred_ras=NULL, variog=
   if (method %in% c('shift','shift_only','rotate_only')) preds <- preds[preds %in% names(pred_ras)]
   else if (method == "kriging"){
     require(spaMM)
-    variog <- lapply(preds, function(pred) fitme(as.formula(paste(pred,"~1+Matern(1|x+y)", sep="")), data=data))
+    variog <- lapply(preds, function(pred) fitme(as.formula(paste(pred,"~1+Matern(1|",coords[1],"+",coords[2],")", sep="")), data=data))
     names(variog) <- preds
   }
 
@@ -131,7 +131,7 @@ simulate_data <- function(data, preds, coords=c('x','y'), pred_ras=NULL, variog=
 
   } else if (method=='kriging') {
     newdata <- shift_rotate(data, coords, radius)
-    for (pred in preds) newdata[,pred] <- predict(variog[[pred]], data=newdata)[,1]
+    for (pred in preds) newdata[,pred] <- predict(variog[[pred]], newdata=newdata)[,1]
   }
   for (pred in preds) newdata <- newdata[!is.na(newdata[,pred]),]
   newdata
