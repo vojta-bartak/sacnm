@@ -39,6 +39,8 @@ require(RandomFields)
 #' Defaults are 'x' and 'y'.
 #' @param method A method how the null models are generated. Possible values are 'shift','RFsim','Viladomat','kriging',
 #' 'shift_only',and 'rotate_only'. See Details for their description. Default is 'shift'.
+#' @param output There will be an explanation here...
+#' @param formulas There will be an explanation here...
 #' @param radius A maximum distance for random shift of the data points. Only used when method is 'shift' or 'shift_only'
 #' (see Details).
 #' @param nsim The number of simulated null models to return.
@@ -46,6 +48,8 @@ require(RandomFields)
 #' @export
 simulate_null_models <- function(model, data, preds=NULL, pred_ras=NULL, variog=NULL, coords=c('x','y'),
                                  method=c('shift','RFsim','Viladomat','kriging','shift_only','rotate_only'),
+                                 output=c('coef','p','dev','AIC','AUC','R2','MSE'),
+                                 formulas=NULL,
                                  radius=NULL,
                                  nsim=1000)
 {
@@ -84,9 +88,53 @@ simulate_null_models <- function(model, data, preds=NULL, pred_ras=NULL, variog=
     newdata <- simulate_data(data=data, preds=preds, coords=coords, pred_ras=pred_ras, variog=variog, method=method, radius=radius)
     if (inherits(model, "ranger")) newdata <- na.omit(newdata)
     newmodel <- try(update(model, data=newdata), silent = T)
-    if (inherits(newmodel, "try-error")) {NULL} else {newmodel}
+    if (inherits(newmodel, "try-error")) {NULL} else {
+      summarize_model(newmodel, data = data)
+    }
   })
 }
+
+
+summarize_model <- function(model, data){
+  output <- list(
+    coefs = coef(model),
+    deviance = deviance(model),
+    mse = NULL,
+    r2 = NULL,
+    AIC = NULL,
+    d2 =NULL,
+    preds.p = NULL,
+    preds.dev = NULL,
+    preds.AIC = NULL,
+    preds.r2 = NULL,
+    preds.importanceRF = NULL
+  )
+  if (inherits(model, "ranger")){
+    output$mse <- model$prediction.error
+    output$r2 <- model$r.squared
+    output$preds.importanceRF <- model$variable.importance
+  } else if (inherits(model, "gam")) {
+    s <- summary(model)
+    output$r2 <- s$r.sq
+    output$d2 <- s$dev.expl
+    output$AIC <- AIC(model)
+  } else if (inherits(model, "glm")) {
+    s <- summary(model)
+    output$r2 <- 1 - s$deviance/s$null.deviance
+    output$d2 <- output$r2
+    output$AIC <- AIC(model)
+  } else if (inherits(model, "lm")){
+    s <- summary(model)
+    output$mse <- s$sigma
+    output$r2 <- s$r.squared
+    output$d2 <- output$r2
+    output$AIC <- AIC(model)
+  }
+  output
+}
+
+
+
 
 # Simulate new data
 #' @export
