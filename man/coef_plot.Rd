@@ -4,15 +4,15 @@
 \alias{coef_plot}
 \title{Model coefficients inference plots based on a given set of null model objects}
 \usage{
-coef_plot(model, null_models, coefs = NULL)
+coef_plot(model, null_model_sums, coefs = NULL)
 }
 \arguments{
 \item{model}{A fitted model object. Currently, objects of classes 'lm', 'glm', and 'gam' are supported.}
 
-\item{null_models}{A list of model objects of the same class as model representing simulations of a null model.}
-
 \item{coefs}{An optional character vector specifying which model coefficients should be inferred. If not specified,
 the inference is made for all model coefficients.}
+
+\item{null_models}{A list of model objects of the same class as model representing simulations of a null model.}
 }
 \value{
 A ggplot with a facet for each model coefficient, plotting its observed value (red line) on a density of

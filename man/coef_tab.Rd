@@ -4,15 +4,15 @@
 \alias{coef_tab}
 \title{Model coefficients inference table based on a given set of null model objects}
 \usage{
-coef_tab(model, null_models, coefs = NULL)
+coef_tab(null_models, coefs = NULL)
 }
 \arguments{
-\item{model}{A fitted model object. Currently, objects of classes 'lm', 'glm', and 'gam' are supported.}
-
 \item{null_models}{A list of model objects of the same class as model representing simulations of a null model.}
 
 \item{coefs}{An optional character vector specifying for which model coefficients the inference should be made.
 If not specified,the inference is made for all coefficients.}
+
+\item{model}{A fitted model object. Currently, objects of classes 'lm', 'glm', and 'gam' are supported.}
 }
 \value{
 A data frame summarizing the null distribution for each model coefficient, including a Monte Carlo p-value.

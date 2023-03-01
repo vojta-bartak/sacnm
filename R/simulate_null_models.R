@@ -44,7 +44,10 @@ require(RandomFields)
 #' @param radius A maximum distance for random shift of the data points. Only used when method is 'shift' or 'shift_only'
 #' (see Details).
 #' @param nsim The number of simulated null models to return.
-#' @return A list of models of the same class as the input model and the lentgh given by nsim.
+#' @return A list of summaries of simulated models. The first item correspond to the original model, the rest correpond to the
+#' models fitted to simulated data. The length of the list is nsim + 1.
+#'
+#' Here, the description of the individual list items will be included.
 #' @export
 simulate_null_models <- function(model, data, preds=NULL, pred_ras=NULL, variog=NULL, coords=c('x','y'),
                                  method=c('shift','RFsim','Viladomat','kriging','shift_only','rotate_only'),
@@ -84,18 +87,28 @@ simulate_null_models <- function(model, data, preds=NULL, pred_ras=NULL, variog=
     names(variog) <- preds
   }
 
-  lapply(1:nsim, function(i){
+  output <- lapply(1:nsim, function(i){
     newdata <- simulate_data(data=data, preds=preds, coords=coords, pred_ras=pred_ras, variog=variog, method=method, radius=radius)
     if (inherits(model, "ranger")) newdata <- na.omit(newdata)
     newmodel <- try(update(model, data=newdata), silent = T)
     if (inherits(newmodel, "try-error")) {NULL} else {
-      summarize_model(newmodel, data = data)
+      newmodel
     }
   })
+
+  output <- append(output, list(model), 0)
+  output
+}
+
+
+summarize_null_models <- function(null_models, data){
+  lapply(null_models, function(model) summarize_model(model, data))
 }
 
 
 summarize_model <- function(model, data){
+  preds <- if (!inherits(model, "ranger")) all.vars(delete.response(terms(model)))
+  else strsplit(strsplit(as.character(model$call)[2], " ~ ")[[1]][2], " + ", fixed=T)[[1]]
   output <- list(
     coefs = coef(model),
     deviance = deviance(model),
@@ -123,6 +136,8 @@ summarize_model <- function(model, data){
     output$r2 <- 1 - s$deviance/s$null.deviance
     output$d2 <- output$r2
     output$AIC <- AIC(model)
+
+
   } else if (inherits(model, "lm")){
     s <- summary(model)
     output$mse <- s$sigma
@@ -130,6 +145,37 @@ summarize_model <- function(model, data){
     output$d2 <- output$r2
     output$AIC <- AIC(model)
   }
+
+  if (inherits(model, "lm") & !inherits(model, "gam")){
+    terms <- attr(terms(model),"term.labels")
+    updated.models <- lapply(preds, function(p) {
+      formula_update <- paste("~.-", paste(terms[grepl(p, terms)], collapse = "-"), sep="")
+      update(model, formula_update, data=data)
+    })
+    anovas <- lapply(updated.models, function(updated.model) {
+      anova(model, updated.model, test="LR")
+    })
+    output$preds.p <- sapply(anovas, function(a) a[2,5])
+    names(output$preds.p) <- preds
+    output$preds.dev <- sapply(anovas, function(a) a[2,4])
+    names(output$preds.dev) <- preds
+    output$preds.AIC <- sapply(updated.models, function(mod) AIC(model) - AIC(mod))
+    names(output$preds.AIC) <- preds
+    if (inherits(model, "glm")){
+      output$preds.r2 <- sapply(updated.models, function(mod) {
+        s <- summary(mod)
+        output$r2 - 1 + s$deviance/s$null.deviance
+      })
+    } else {
+      output$preds.r2 <- sapply(updated.models, function(mod) {
+        s <- summary(mod)
+        output$r2 - s$r.squared
+      })
+    }
+
+    names(output$preds.r2) <- preds
+  }
+
   output
 }
 
@@ -237,3 +283,4 @@ get_variogram <- function(x){
   require(geoR)
 
 }
+

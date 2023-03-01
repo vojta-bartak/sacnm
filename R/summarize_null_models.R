@@ -10,11 +10,12 @@
 #' If not specified,the inference is made for all coefficients.
 #' @return A data frame summarizing the null distribution for each model coefficient, including a Monte Carlo p-value.
 #' @export
-coef_tab <- function(model, null_models, coefs=NULL)
+coef_tab <- function(null_models, coefs=NULL)
 {
-  if (is.null(coefs)) coefs <- names(coef(model))
-  obs.coef <- coef(model)[coefs]
-  null.coef <- do.call(rbind, lapply(null_models, function(m) coef(m)[coefs]))
+  obs.coef <- null_models[[1]]$coefs
+  if (is.null(coefs)) coefs <- names(obs.coef)
+  obs.coef <- obs.coef[coefs]
+  null.coef <- do.call(rbind, lapply(null_models[2:length(null_models)], function(m) m$coefs))
   sums <- as.data.frame(t(apply(null.coef, 2, quantile, probs=c(0,0.25,0.5,0.75,1), na.rm=T)))
   colnames(sums) <- c("Min.","1st Qu.", "Median", "3rd Qu.", "Max.")
   sums$Mean <- apply(null.coef, 2, mean, na.rm=T)
@@ -23,6 +24,53 @@ coef_tab <- function(model, null_models, coefs=NULL)
     if (is.na(obs.coef[prm])) {NA} else {
       p <- rank(c(obs.coef[prm],null.coef[,prm]))[1]/(nrow(null.coef)+1)
       2*min(p, 1-p)
+    }
+  })
+  sums$Significance <- sapply(sums$P.value, function(p){
+    if(is.na(p)){NA}else if(p<0.001){"***"}else if (p<0.01){"**"}else if (p<0.05){"*"}else if(p<0.1){"."}else{""}
+  })
+  sums
+}
+
+pred_tab <- function(null_models, metric = c("All","p","dev","AIC","r2")){
+  metric <- metric[1]
+  output <- NULL
+  # if (inherits(model, "ranger")){
+  #
+  # } else {
+  if (metric == "All"){
+    output <- lapply(c("p","dev","AIC","r2"), function(metric){
+      out <- tabulate_metric(null_models, metric)
+      out$Metric <- metric
+      out
+    })
+    output <- do.call(rbind, output)
+  } else {
+    output <- tabulate_metric(null_models, metric)
+  }
+
+  # }
+  output
+}
+
+tabulate_metric <- function(null_models, metric){
+  metric <- paste("preds", metric, sep=".")
+  null.values <- do.call(rbind, lapply(null_models, function(nm){
+    nm[[metric]]
+  }))
+  s <- null.values[1,]
+  sums <- as.data.frame(t(apply(null.values[2:nrow(null.values),], 2, quantile, probs=c(0,0.25,0.5,0.75,1), na.rm=T)))
+  colnames(sums) <- c("Min.","1st Qu.", "Median", "3rd Qu.", "Max.")
+  sums$Mean <- apply(null.values[2:nrow(null.values),], 2, mean, na.rm=T)
+  sums$Observed <- s
+  sums$P.value <- sapply(names(s), function(pred){
+    if (is.na(s[pred])) {NA} else {
+      p <- rank(na.omit(null.values[,pred]))[1]/length(na.omit(null.values[,pred]))
+      if (metric %in% c("preds.p", "preds.AIC", "preds.dev")){
+        p
+      } else if (metric %in% c("preds.r2")){
+        1-p
+      }
     }
   })
   sums$Significance <- sapply(sums$P.value, function(p){
@@ -44,16 +92,16 @@ coef_tab <- function(model, null_models, coefs=NULL)
 #' @return A ggplot with a facet for each model coefficient, plotting its observed value (red line) on a density of
 #' its null distribution as well as 0.025, 0.5, and 0.975 quantiles.
 #' @export
-coef_plot <- function(model, null_models, coefs=NULL)
+coef_plot <- function(model, null_model_sums, coefs=NULL)
 {
   require(ggplot2)
-  if (is.null(coefs)) coefs <- names(coef(model))
-  coefs <- coefs[coefs %in% names(coef(model))[!is.na(coef(model))]]
-  obs.coef <- as.data.frame(coef(model)[coefs])
+  if (is.null(coefs)) coefs <- names(null_model_sums[[1]]$coefs)
+  coefs <- coefs[coefs %in% names(null_model_sums[[1]]$coefs)[!is.na(null_model_sums[[1]]$coefs)]]
+  obs.coef <- as.data.frame(null_model_sums[[1]]$coefs[coefs])
   colnames(obs.coef) <- "value"
   obs.coef$name <- rownames(obs.coef)
   obs.coef$quant <- "Observed"
-  null.coef <- as.data.frame(do.call(rbind, lapply(null_models, function(m) coef(m)[coefs])))
+  null.coef <- as.data.frame(do.call(rbind, lapply(null_model_sums[2:length(null_model_sums)], function(s) s$coefs)))
   ylims <- apply(null.coef, 2, function(col) max(stats::density(na.omit(col))$y))
   obs.coef$ylim <- ylims
   ci <- t(apply(null.coef, 2, function(col) quantile(col, c(0.025,0.5,0.975))))

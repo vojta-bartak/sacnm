@@ -12,6 +12,8 @@ simulate_null_models(
   variog = NULL,
   coords = c("x", "y"),
   method = c("shift", "RFsim", "Viladomat", "kriging", "shift_only", "rotate_only"),
+  output = c("coef", "p", "dev", "AIC", "AUC", "R2", "MSE"),
+  formulas = NULL,
   radius = NULL,
   nsim = 1000
 )
@@ -38,13 +40,20 @@ Defaults are 'x' and 'y'.}
 \item{method}{A method how the null models are generated. Possible values are 'shift','RFsim','Viladomat','kriging',
 'shift_only',and 'rotate_only'. See Details for their description. Default is 'shift'.}
 
+\item{output}{There will be an explanation here...}
+
+\item{formulas}{There will be an explanation here...}
+
 \item{radius}{A maximum distance for random shift of the data points. Only used when method is 'shift' or 'shift_only'
 (see Details).}
 
 \item{nsim}{The number of simulated null models to return.}
 }
 \value{
-A list of models of the same class as the input model and the lentgh given by nsim.
+A list of summaries of simulated models. The first item correspond to the original model, the rest correpond to the
+models fitted to simulated data. The length of the list is nsim + 1.
+
+Here, the description of the individual list items will be included.
 }
 \description{
 This is the main function, simulating a set of null models based on a given model and data, keeping the original
