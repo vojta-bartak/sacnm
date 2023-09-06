@@ -136,7 +136,7 @@ simulate_null_models <- function(model, data, preds = NULL, pred_ras = NULL, var
   output
 }
 
-
+#' @export
 summarize_null_models <- function(null_models, data){
   lapply(null_models, function(model) summarize_model(model, data))
 }
