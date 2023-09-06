@@ -136,6 +136,14 @@ simulate_null_models <- function(model, data, preds = NULL, pred_ras = NULL, var
   output
 }
 
+#' Summarize null models
+#'
+#' Description will be here...
+#'
+#' @param null_models ...
+#' @param data ...
+#' @return ...
+#'
 #' @export
 summarize_null_models <- function(null_models, data){
   lapply(null_models, function(model) summarize_model(model, data))
@@ -184,35 +192,35 @@ summarize_model <- function(model_where, data){
     output$AIC <- AIC(model)
   }
 
-  if (inherits(model, "lm") & !inherits(model, "gam")){
-    terms <- attr(terms(model),"term.labels")
-    updated.models <- lapply(preds, function(p) {
-      formula_update <- paste("~.-", paste(terms[grepl(p, terms)], collapse = "-"), sep="")
-      update(model, formula_update, data=data[where,])
-    })
-    anovas <- lapply(updated.models, function(updated.model) {
-      anova(model, updated.model, test="LR")
-    })
-    output$preds.p <- sapply(anovas, function(a) a[2,5])
-    names(output$preds.p) <- preds
-    output$preds.dev <- sapply(anovas, function(a) a[2,4])
-    names(output$preds.dev) <- preds
-    output$preds.AIC <- sapply(updated.models, function(mod) AIC(model) - AIC(mod))
-    names(output$preds.AIC) <- preds
-    if (inherits(model, "glm")){
-      output$preds.r2 <- sapply(updated.models, function(mod) {
-        s <- summary(mod)
-        output$r2 - 1 + s$deviance/s$null.deviance
-      })
-    } else {
-      output$preds.r2 <- sapply(updated.models, function(mod) {
-        s <- summary(mod)
-        output$r2 - s$r.squared
-      })
-    }
-
-    names(output$preds.r2) <- preds
-  }
+  # if (inherits(model, "lm") & !inherits(model, "gam")){
+  #   terms <- attr(terms(model),"term.labels")
+  #   updated.models <- lapply(preds, function(p) {
+  #     formula_update <- paste("~.-", paste(terms[grepl(p, terms)], collapse = "-"), sep="")
+  #     update(model, formula_update, data=data[where,])
+  #   })
+  #   anovas <- lapply(updated.models, function(updated.model) {
+  #     anova(model, updated.model, test="LR")
+  #   })
+  #   output$preds.p <- sapply(anovas, function(a) a[2,5])
+  #   names(output$preds.p) <- preds
+  #   output$preds.dev <- sapply(anovas, function(a) a[2,4])
+  #   names(output$preds.dev) <- preds
+  #   output$preds.AIC <- sapply(updated.models, function(mod) AIC(model) - AIC(mod))
+  #   names(output$preds.AIC) <- preds
+  #   if (inherits(model, "glm")){
+  #     output$preds.r2 <- sapply(updated.models, function(mod) {
+  #       s <- summary(mod)
+  #       output$r2 - 1 + s$deviance/s$null.deviance
+  #     })
+  #   } else {
+  #     output$preds.r2 <- sapply(updated.models, function(mod) {
+  #       s <- summary(mod)
+  #       output$r2 - s$r.squared
+  #     })
+  #   }
+  #
+  #   names(output$preds.r2) <- preds
+  # }
 
   output
 }

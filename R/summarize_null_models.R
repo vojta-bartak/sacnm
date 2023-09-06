@@ -4,7 +4,6 @@
 #' (typically created by the function simulate_null_models from teh same package) and compares the observed value of
 #' each coefficient with these null distributions.
 #'
-#' @param model A fitted model object. Currently, objects of classes 'lm', 'glm', and 'gam' are supported.
 #' @param null_models A list of model objects of the same class as model representing simulations of a null model.
 #' @param coefs An optional character vector specifying for which model coefficients the inference should be made.
 #' If not specified,the inference is made for all coefficients.
