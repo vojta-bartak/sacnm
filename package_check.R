@@ -54,22 +54,63 @@ plot(df3 %>% st_as_sf(coords=c("x","y")) %>% st_geometry, add=T, col="green")
 df2$p1 <- predict(mm, newdata=df2)[,1]
 df3$p1 <- predict(mm, newdata=df3)[,1]
 
+plot(st_as_sfc(st_bbox(df %>% st_as_sf(coords=c("x","y")))))
+plot(df %>% st_as_sf(coords=c("x","y")) %>% st_geometry, add=T)
+df4 <- df %>% rotate_warp
+plot(df4 %>% st_as_sf(coords=c("x","y")) %>% st_geometry, add=T, col="green")
+
+
+
+
 plot(df2$predictor, df3$predictor)
+
 
 coef(ms[[1]])
 coef(ms[[2]])
 
+prctile <- quantile(dist(df[,coords]), probs = 0.25)
+variog <- lapply(preds, function(pred)
+  variog(data = df[,pred], coords = df[,coords], max.dist = prctile, option = "bin", messages = FALSE)
+)
+names(variog) <- preds
+variog2 <- lapply(preds, function(pred) fitme(as.formula(paste(pred,"~1+Matern(1|",coords[1],"+",coords[2],")", sep="")), data=data))
+names(variog2) <- preds
+nuggets <- numeric(0)
+variog3 <- list()
+for (pred in preds){
+  vgm <- likfit(data=data[,pred],
+                coords = cbind(data[,coords[1]], data[,coords[2]]),
+                cov.model = var_model, kappa = kappa,
+                ini.cov.pars = c(var(data[,pred]), max(max(data[,coords[1]])-min(data[,coords[1]]),
+                                                       max(data[,coords[2]])-min(data[,coords[2]]))),
+                fix.nugget = fixed_nugget, nugget = nugget,
+                messages = F)
+  nuggets <- c(nuggets, if (!fixed_nugget) vgm$nugget else nugget)
+  variog3 <- c(variog3, switch(var_model,
+                               "mat" = RMwhittle(nu=kappa, var = vgm$cov.pars[1], scale = vgm$cov.pars[2])))
+}
+names(variog3) <- preds
+names(nuggets) <- preds
+
+newdf1 <- simulate_data(df, preds, variog = variog, method = "Viladomat", prctile = prctile, center_data = T)
+newdf2 <- simulate_data(df, preds, variog = variog2, method = "kriging", radius = 50, center_data = T)
+newdf3 <- simulate_data(df, preds, variog = variog3, nuggets = nuggets, method = "RFsim", center_data = T)
+
+newdf <- newdf1
+rbind(df %>% mutate(orig="orig"), newdf$newdata %>% mutate(orig="new")) %>% ggplot(aes(x=p1, fill=orig)) + geom_histogram(stat = "density")
+rbind(df %>% mutate(orig="orig"), newdf$newdata %>% mutate(orig="new")) %>% ggplot(aes(x=p2, fill=orig)) + geom_histogram(stat = "density")
+
 # models ==============================================================================================================
-df$resp <- as.numeric(df$response > -3)
+df$resp <- as.numeric(df$response > -1)
 table(df$resp)
 m.lm <- lm(response~p1+p2, data=df)
 m.glm <- glm(resp~p1 + p2, data=df, family=binomial)
 m.gam <- gam(response~s(p1) + s(p2), data=df)
 m.rf <- ranger(response~p1+p2, data=df)
 
-m <- m.rf
+m <- m.glm
 summary(m)
-ms <- simulate_null_models(m, df, radius = 100, pred_ras=list(predictor=r.pred), method="kriging")
+ms <- simulate_null_models(m, df, radius = 50, pred_ras=list(p1=r.pred, p2=r2.pred), method='RFsim', nsim=1000, center_data = T)
 sums <- summarize_null_models(ms, df)
 coef_tab(sums)
 pred_tab(sums)
@@ -108,7 +149,7 @@ plots <- lapply(1:nrow(params), function(row){
   m <- lm(response~predictor, data=df)
   ms <- simulate_null_models(m, df, radius = radius, pred_ras=list(predictor=r.pred), method=method)
   effect_plot(m, ms, df) +
-    labs(title=paste("Method = ",method,", Radius = ",radius,", Scale = ",scale,sep=""))
+    labs(title=paste(method, "r =", radius, scale))
 })
 library(gridExtra)
 grid.arrange(grobs=plots, ncol=6)

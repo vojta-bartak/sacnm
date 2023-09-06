@@ -73,9 +73,10 @@ tabulate_metric <- function(null_models, metric){
       }
     }
   })
-  sums$Significance <- sapply(sums$P.value, function(p){
+  sums$Sign <- sapply(sums$P.value, function(p){
     if(is.na(p)){NA}else if(p<0.001){"***"}else if (p<0.01){"**"}else if (p<0.05){"*"}else if(p<0.1){"."}else{""}
   })
+  sums$Pred <- rownames(sums)
   sums
 }
 
@@ -144,6 +145,7 @@ coef_plot <- function(model, null_model_sums, coefs=NULL)
 effect_plot <- function(model, null_models, data, preds=NULL, lower=c(0.025), upper=c(0.975), nval=100, plotdata=TRUE){
   require(ggplot2)
   null_models <- Filter(function(x) !is.null(x), null_models)
+  null_models <- lapply(null_models, function(m) m$model)
   if (inherits(model, "ranger")){
     if (is.null(preds))  {
       preds <- strsplit(as.character(model$call)[2], split=" ~ ", fixed=T)[[1]][2]

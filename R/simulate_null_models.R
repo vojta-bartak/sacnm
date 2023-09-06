@@ -49,15 +49,21 @@ require(RandomFields)
 #'
 #' Here, the description of the individual list items will be included.
 #' @export
-simulate_null_models <- function(model, data, preds=NULL, pred_ras=NULL, variog=NULL, coords=c('x','y'),
-                                 method=c('shift','RFsim','Viladomat','kriging','shift_only','rotate_only'),
-                                 output=c('coef','p','dev','AIC','AUC','R2','MSE'),
-                                 formulas=NULL,
-                                 radius=NULL,
-                                 nsim=1000)
+simulate_null_models <- function(model, data, preds = NULL, pred_ras = NULL, variog = NULL, coords = c('x','y'),
+                                 method = c('shift','RFsim','Viladomat','kriging','shift_only','rotate_only',
+                                            'rotate_warp','kriging_warp'),
+                                 output = c('coef','p','dev','AIC','AUC','R2','MSE'),
+                                 formulas = NULL,
+                                 radius = NULL,
+                                 nsim = 1000,
+                                 var_model = "mat",
+                                 kappa = 1.5,
+                                 fixed_nugget = TRUE,
+                                 nugget = 0,
+                                 center_data = TRUE)
 {
   method=method[1]
-  if (method %in% c('shift','kriging','shift_only','rotate_only') & class(radius)!="numeric")
+  if (method %in% c('shift','kriging','shift_only') & class(radius)!="numeric")
     stop("Error: radius must be specified for the selected method!")
   if (method %in% c('shift','shift_only','rotate_only')) {
     if (inherits(pred_ras, "list")) {
@@ -80,23 +86,53 @@ simulate_null_models <- function(model, data, preds=NULL, pred_ras=NULL, variog=
       preds <- preds[preds %in% colnames(data) & !(preds %in% coords)]
     }
   }
-  if (method %in% c('shift','shift_only','rotate_only')) preds <- preds[preds %in% names(pred_ras)]
+
+  prctile = NULL
+  nuggets = NULL
+  if (method %in% c('shift','shift_only','rotate_only','rotate_warp',"kriging_warp")) preds <- preds[preds %in% names(pred_ras)]
   else if (method == "kriging"){
     require(spaMM)
     variog <- lapply(preds, function(pred) fitme(as.formula(paste(pred,"~1+Matern(1|",coords[1],"+",coords[2],")", sep="")), data=data))
     names(variog) <- preds
+  } else if (method == "Viladomat"){
+    require(geoR)
+    prctile <- quantile(dist(data[,coords]), probs = 0.25)
+    variog <- lapply(preds, function(pred)
+      variog(data = data[,pred], coords = data[,coords], max.dist = prctile, option = "bin", messages = FALSE)
+      )
+    names(variog) <- preds
+  } else if (method == "RFsim"){
+    require(geoR)
+    nuggets <- numeric(0)
+    variog <- list()
+    for (pred in preds){
+      vgm <- likfit(data=data[,pred],
+                    coords = cbind(data[,coords[1]], data[,coords[2]]),
+                    cov.model = var_model, kappa = kappa,
+                    ini.cov.pars = c(var(data[,pred]), max(max(data[,coords[1]])-min(data[,coords[1]]),
+                                                           max(data[,coords[2]])-min(data[,coords[2]]))),
+                    fix.nugget = fixed_nugget, nugget = nugget,
+                    messages = F)
+      nuggets <- c(nuggets, if (!fixed_nugget) vgm$nugget else nugget)
+      variog <- c(variog3, switch(var_model,
+                                   "mat" = RMwhittle(nu=kappa, var = vgm$cov.pars[1], scale = vgm$cov.pars[2])))
+    }
+    names(variog) <- preds
+    names(nuggets) <- preds
   }
 
   output <- lapply(1:nsim, function(i){
-    newdata <- simulate_data(data=data, preds=preds, coords=coords, pred_ras=pred_ras, variog=variog, method=method, radius=radius)
+    simdata <- simulate_data(data=data, preds=preds, coords=coords, pred_ras=pred_ras, variog=variog, method=method, radius=radius,
+                             prctile=prctile, nuggets = nuggets, center_data = center_data)
+    newdata <- simdata$newdata
     if (inherits(model, "ranger")) newdata <- na.omit(newdata)
     newmodel <- try(update(model, data=newdata), silent = T)
     if (inherits(newmodel, "try-error")) {NULL} else {
-      newmodel
+      list(model = newmodel, indices = simdata$indices)
     }
   })
 
-  output <- append(output, list(model), 0)
+  output <- append(output, list(list(model=model, indices = 1:nrow(data))), 0)
   output
 }
 
@@ -106,7 +142,9 @@ summarize_null_models <- function(null_models, data){
 }
 
 
-summarize_model <- function(model, data){
+summarize_model <- function(model_where, data){
+  model = model_where$model
+  where = model_where$indices
   preds <- if (!inherits(model, "ranger")) all.vars(delete.response(terms(model)))
   else strsplit(strsplit(as.character(model$call)[2], " ~ ")[[1]][2], " + ", fixed=T)[[1]]
   output <- list(
@@ -150,7 +188,7 @@ summarize_model <- function(model, data){
     terms <- attr(terms(model),"term.labels")
     updated.models <- lapply(preds, function(p) {
       formula_update <- paste("~.-", paste(terms[grepl(p, terms)], collapse = "-"), sep="")
-      update(model, formula_update, data=data)
+      update(model, formula_update, data=data[where,])
     })
     anovas <- lapply(updated.models, function(updated.model) {
       anova(model, updated.model, test="LR")
@@ -185,24 +223,12 @@ summarize_model <- function(model, data){
 # Simulate new data
 #' @export
 simulate_data <- function(data, preds, coords=c('x','y'), pred_ras=NULL, variog=NULL,
-                          method=c('shift','RFsim','Viladomat','kriging','shift_only','rotate_only'),
-                          radius=NULL)
+                          method=c('shift','RFsim','Viladomat','kriging','shift_only','rotate_only','rotate_warp','kriging_warp'),
+                          radius=NULL, prctile=NULL, nuggets = NULL, center_data = TRUE)
 {
   preds <- preds[preds %in% colnames(data)]
   if (method %in% c("shift", "shift_only", "rotate_only")) require(stars)
-  else if (method == "RFsim"){
-    require(RandomFields)
-    require(geoR)
 
-    # getting variograms
-    if (is.null(variog)){
-      variog <- lapply(preds, function(pred) NULL)
-      names(variog) <- preds
-    }
-    for (i in 1:length(variog)) {
-      if (is.null(variog[[i]])) variog[[i]] <- get_variogram(data[names(variog)[i]])
-    }
-  }
   if (method=='shift') {
     newdata <- shift_rotate(data, coords, radius)
     for (pred in preds){
@@ -218,17 +244,39 @@ simulate_data <- function(data, preds, coords=c('x','y'), pred_ras=NULL, variog=
     for (pred in preds){
       newdata[,pred] <- st_extract(pred_ras[[pred]], cbind(newdata[,coords[1]],newdata[,coords[2]]))[[1]]
     }
+  } else if (method=='rotate_warp') {
+    newdata <- rotate_warp(data, coords, radius = radius)
+    for (pred in preds){
+      newdata[,pred] <- st_extract(pred_ras[[pred]], cbind(newdata[,coords[1]],newdata[,coords[2]]))[[1]]
+    }
   } else if (method=='RFsim') {
-
-
+    newdata <- data
+    for (pred in preds){
+      newdata[,pred] <- RFsimulate(variog[[pred]], x=data[,coords[1]], y=data[,coords[2]])$variable1 +
+        (if (nuggets[pred] > 0) RFsimulate(RMnugget(var=nuggets[pred]))$variable1 else 0)
+    }
   } else if (method=='Viladomat') {
+    newdata <- data
+    perm <- sample(1:nrow(data), size = nrow(data), replace = F)
+    for (pred in preds) {
+      newdata[,pred] <- variog.matching(data[perm, pred],
+                                        coords=data[,coords],
+                                        Delta = seq(0.1,0.9,0.1),
+                                        target_variog = variog[[pred]],
+                                        prctile = prctile)
+    }
 
   } else if (method=='kriging') {
     newdata <- shift_rotate(data, coords, radius)
     for (pred in preds) newdata[,pred] <- predict(variog[[pred]], newdata=newdata)[,1]
+  } else if (method=='kriging_warp') {
+    newdata <- rotate_warp(data, coords, radius = radius)
+    for (pred in preds) newdata[,pred] <- predict(variog[[pred]], newdata=newdata)[,1]
   }
-  for (pred in preds) newdata <- newdata[!is.na(newdata[,pred]),]
-  newdata
+  indices <- which(apply(newdata, 1, function(row) max(is.na(row))) == 0)
+  if (center_data) for (pred in preds) newdata[,pred] <- newdata[,pred] + mean(data[,pred], na.rm=T) - mean(newdata[,pred], na.rm=T)
+  for (pred in preds) newdata <- newdata[!is.na(newdata[,pred]),] # na.omit instead?
+  list(newdata=newdata, indices=indices)
 }
 
 # Data random shift
@@ -271,6 +319,25 @@ shift_rotate <- function(data, coords=c("x","y"), radius=50, angle1=NULL, angle2
   newdat
 }
 
+# Data random rotation and warp
+rotate_warp <- function(data, coords=c("x","y"), radius=NULL, angle=NULL, distance=NULL){
+  if (is.null(radius)) radius <- diff(range(data[,coords[1]]))
+  if (is.null(angle)) angle <- runif(1, 0, 2*pi)
+  x <- data[,coords[1]]
+  y <- data[,coords[2]]
+  mx <- mean(data[,coords[1]])
+  my <- mean(data[,coords[2]])
+  x.rot <- (x-mx)*cos(angle) - (y-my)*sin(angle) + mx
+  y.rot <- (x-mx)*sin(angle) + (y-my)*cos(angle) + my
+  if (is.null(distance)) distance <- runif(1, 0, radius)
+  newdat <- data
+  newdat[,coords[1]] <- x.rot
+  newdat[,coords[2]] <- ifelse(y.rot + distance > max(newdat[,coords[2]]),
+                               min(newdat[,coords[2]]) + y.rot + distance - max(newdat[,coords[2]]),
+                               y.rot + distance)
+  newdat
+}
+
 # Update model - fit model with simulated data
 # update_model <- function(model, newdata){
 #   if (inherits(model, "ranger")){
@@ -279,8 +346,42 @@ shift_rotate <- function(data, coords=c("x","y"), radius=50, angle1=NULL, angle2
 #   else if (inherits(model, "gam"))
 # }
 
-get_variogram <- function(x){
+variog.matching <- function(x, coords, Delta, target_variog, prctile) {
   require(geoR)
+  require(locfit)
+  variog.X.delta <- vector(mode = "list", length = length(Delta))
+  linear.fit <- variog.X.delta
+  hat.X.delta <- variog.X.delta
+  resid.sum.squares <- rep(0, length(Delta))
+  for (k in 1:length(Delta)) {
+    # smooth X.randomized using locfit:
+    fit <- locfit(x ~ lp(coords[,1], coords[,2], nn = Delta[k], deg = 0), kern = "gauss", maxk = 300)
+    X.delta <- fitted(fit)
 
+    # variogram of X.delta:
+    variog.X.delta[[k]] <- variog(data = X.delta, coords = coords, option = "bin", max.dist = prctile, messages = FALSE)
+
+    # linear regression between the target and X.delta variograms:
+    linear.fit[[k]] <- lm(target_variog$v ~ 1 + variog.X.delta[[k]]$v)
+
+    # least square estimates:
+    bet.hat <- as.numeric(linear.fit[[k]]$coefficients)
+
+    # transformed X.delta:
+    hat.X.delta[[k]] <- X.delta * sqrt(abs(bet.hat[2])) + rnorm(length(X.delta)) * sqrt(abs(bet.hat[1]))
+    variog.hat.X.delta <- variog(data = hat.X.delta[[k]], coords = coords, option = "bin", max.dist = prctile, messages = FALSE)
+
+    # hat.X.delta[[k]] <- X.delta
+    # variog.hat.X.delta <- variog(data = X.delta, coords = coords, option = "bin", max.dist = prctile, messages = FALSE)
+
+    # sum of squares of the residuals:
+    resid.sum.squares[k] <- sum((variog.hat.X.delta$v-target_variog$v) ^ 2)
+  }
+
+  # delta that minimizes the residual sum of squares:
+  delta.star.id <- which.min(resid.sum.squares)
+  hat.X.delta.star <- hat.X.delta[[delta.star.id]]
+  # print(resid.sum.squares[delta.star.id])
+
+  return(hat.X.delta.star)
 }
-
