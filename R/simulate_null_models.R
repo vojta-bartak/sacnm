@@ -114,8 +114,8 @@ simulate_null_models <- function(model, data, preds = NULL, pred_ras = NULL, var
                     fix.nugget = fixed_nugget, nugget = nugget,
                     messages = F)
       nuggets <- c(nuggets, if (!fixed_nugget) vgm$nugget else nugget)
-      variog <- c(variog3, switch(var_model,
-                                   "mat" = RMwhittle(nu=kappa, var = vgm$cov.pars[1], scale = vgm$cov.pars[2])))
+      variog <- c(variog, switch(var_model,
+                                 "mat" = RMwhittle(nu=kappa, var = vgm$cov.pars[1], scale = vgm$cov.pars[2])))
     }
     names(variog) <- preds
     names(nuggets) <- preds
